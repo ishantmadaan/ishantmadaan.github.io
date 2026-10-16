@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reliability Score demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --mint:#D7EFD4;
+    --mint-deep:#BFE3BA;
+    --paper:#F6F5F1;
+    --card:#FFFFFF;
+    --ink:#1F1418;
+    --ink-soft:#5B535A;
+    --plum:#2B1A21;
+    --burgundy:#B4233A;
+    --burgundy-soft:#FBEEF0;
+    --green:#2F6B4F;
+    --green-soft:#EAF4EE;
+    --marigold:#F2C94C;
+    --marigold-soft:#FFF6D9;
+    --amber:#B8672E;
+    --amber-soft:#FCF0E6;
+    --line:#E6E2DC;
+    --radius-card:20px;
+    --radius-pill:999px;
+    font-size:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);font-family:Lato,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  button{font:inherit;cursor:pointer}
+  button:focus-visible,input:focus-visible{outline:3px solid var(--marigold);outline-offset:2px}
+
+  .stage{max-width:1180px;margin:0 auto;padding:28px 20px 60px;display:grid;grid-template-columns:400px 1fr;gap:36px;align-items:start}
+  @media (max-width:860px){.stage{grid-template-columns:1fr;gap:24px}}
+
+  /* Phone */
+  .phone{background:var(--card);border-radius:40px;border:1px solid var(--line);box-shadow:0 30px 60px -30px rgba(31,20,24,.35);overflow:hidden;position:sticky;top:20px}
+  .phone-top{background:var(--mint);padding:22px 22px 26px;position:relative;transition:background .35s}
+  .phone-top .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+  .circle{width:38px;height:38px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--ink);font-weight:700}
+  .greeting{text-align:center;font-size:15px;color:var(--ink);margin:0 0 6px;min-height:22px}
+  .score{text-align:center;font-size:72px;font-weight:900;letter-spacing:-2px;line-height:1;margin:0;font-variant-numeric:tabular-nums;transition:color .25s}
+  .tier{text-align:center;margin-top:10px;font-weight:700;font-size:17px}
+  .tier small{display:block;font-weight:400;color:var(--ink-soft);font-size:13px;margin-top:2px}
+
+  .phone-body{padding:20px 20px 24px}
+  .track-wrap{position:relative;padding:26px 6px 34px}
+  .track{position:relative;height:16px;border-radius:999px;
+    background:linear-gradient(90deg,#C63A3A 0%,#D9866A 30%,#CFC4BA 62%,#8FCBA5 80%,#2F6B4F 100%);
+    border:1px solid rgba(31,20,24,.25)}
+  .zero-line{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink);left:66.67%;transform:translateX(-1px)}
+  .thumb{position:absolute;top:50%;width:26px;height:26px;border-radius:50%;background:#fff;border:2px solid var(--ink);transform:translate(-50%,-50%);box-shadow:0 2px 6px rgba(0,0,0,.25);transition:left .35s cubic-bezier(.2,.8,.2,1)}
+  .thumb::after{content:"you";position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700}
+  .ticks{position:absolute;left:6px;right:6px;top:52px;height:14px;font-size:11px;color:var(--ink-soft)}
+  .ticks span{position:absolute;transform:translateX(-50%)}
+  .bands{position:absolute;left:6px;right:6px;top:70px;height:16px;font-size:11px;font-weight:700}
+  .bands span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+  .b-restricted{color:#7A1F1F}.b-limited{color:var(--amber)}.b-full{color:var(--green)}.b-trusted{color:#8A6A0A}
+  @media (prefers-reduced-motion:reduce){.thumb{transition:none}}
+
+  .panel{border-radius:16px;padding:14px 16px;margin-top:14px}
+  .panel h3{margin:0 0 6px;font-size:14px}
+  .panel p{margin:4px 0;font-size:14px;line-height:1.4}
+  .panel .muted{color:var(--ink-soft);font-size:13px}
+  .changed{background:var(--burgundy-soft)}.changed h3{color:var(--burgundy)}
+  .changed.up{background:var(--green-soft)}.changed.up h3{color:var(--green)}
+  .changed.neutral{background:#F1EFEA}.changed.neutral h3{color:var(--ink-soft)}
+  .climb{background:var(--green-soft)}.climb h3{color:var(--green)}
+  .climb .warn{color:var(--burgundy)}
+  .deact{background:var(--burgundy);color:#fff}.deact h3{color:#fff}
+  .pill{display:block;width:100%;margin-top:14px;padding:14px;border-radius:var(--radius-pill);border:1px solid var(--ink);background:#fff;color:var(--ink);font-weight:700;text-align:center}
+  .pill.dark{background:var(--plum);color:#fff;border-color:var(--plum)}
+  .pill[disabled]{opacity:.4;cursor:not-allowed}
+
+  /* Presenter side */
+  .presenter h1{font-size:30px;margin:6px 0 4px;letter-spacing:-.5px}
+  .presenter .lede{color:var(--ink-soft);margin:0 0 22px;max-width:56ch;line-height:1.5}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-card);padding:20px 22px;margin-bottom:18px}
+  .card h2{font-size:16px;margin:0 0 12px}
+  .slider{width:100%;accent-color:var(--plum);margin:6px 0 2px}
+  .slider-scale{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-soft)}
+  .events{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .ev{border-radius:14px;border:1px solid var(--line);background:#fff;padding:12px 12px;text-align:left;display:flex;flex-direction:column;gap:4px;transition:transform .08s}
+  .ev:active{transform:scale(.97)}
+  .ev b{font-size:20px;font-variant-numeric:tabular-nums}
+  .ev span{font-size:13px;color:var(--ink-soft)}
+  .ev.plus{border-color:var(--green);background:var(--green-soft)}.ev.plus b{color:var(--green)}
+  .ev.zero b{color:var(--ink-soft)}
+  .ev.minus1 b{color:var(--amber)}.ev.minus3 b{color:#A6522F}.ev.minus5 b{color:#9E2D3A}
+  .ev.ncns{border-color:var(--burgundy);background:var(--burgundy-soft)}.ev.ncns b{color:var(--burgundy)}
+  .ev.forgive{border-color:#4E6E9A;background:#EEF3FA}.ev.forgive b{color:#2A5A8A}
+  .ev[disabled]{opacity:.45;cursor:not-allowed}
+  .presets{display:flex;flex-wrap:wrap;gap:8px}
+  .preset{border-radius:var(--radius-pill);border:1px solid var(--ink);background:#fff;padding:8px 14px;font-size:14px}
+  .preset:hover{background:var(--mint)}
+  .rules{width:100%;border-collapse:collapse;font-size:14px}
+  .rules td{padding:8px 4px;border-top:1px solid var(--line);vertical-align:top}
+  .rules td:first-child{width:52%}
+  .rules b{font-variant-numeric:tabular-nums}
+  .log{list-style:none;margin:0;padding:0;font-size:13px;max-height:170px;overflow:auto}
+  .log li{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--line)}
+  .log li:first-child{border-top:0}
+  .log li b{font-variant-numeric:tabular-nums}
+  .week{font-size:13px;color:var(--ink-soft);margin-top:10px;display:flex;justify-content:space-between;align-items:center}
+  .link{background:none;border:0;color:#2A5A8A;text-decoration:underline;padding:0;font-size:13px}
+
+  .sheet{border-top:1px solid var(--line);margin-top:18px;padding-top:16px}
+  .sheet h4{margin:0 0 4px;font-size:15px}
+  .sheet .sub{margin:0 0 12px;font-size:13px;color:var(--ink-soft)}
+  .opt{display:block;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px 14px;margin-bottom:8px;line-height:1.35}
+  .opt:hover{border-color:var(--ink)}
+  .opt b{display:block;font-size:14px}
+  .opt span{font-size:12px;color:var(--ink-soft)}
+  .opt.confused{border-left:4px solid #2A5A8A;border-radius:0 14px 14px 0}
+  .opt.unfair{border-left:4px solid var(--burgundy);border-radius:0 14px 14px 0}
+  .opt.appeal{border-left:4px solid var(--amber);border-radius:0 14px 14px 0}
+  .opt.fine{border-left:4px solid var(--green);border-radius:0 14px 14px 0}
+  .stars{display:flex;gap:8px;margin:6px 0 4px}
+  .star{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:#fff;font-weight:700}
+  .star:hover{background:var(--mint)}
+  .ack{background:var(--mint);border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.45}
+  .ack.a-confused{background:#EEF3FA}
+  .ack.a-unfair{background:var(--burgundy-soft)}
+  .ack.a-appeal{background:var(--amber-soft)}
+  .ack.a-fine{background:var(--green-soft)}
+  .ack b{display:block;margin-bottom:4px}
+  .sig{width:100%;border-collapse:collapse;font-size:13px}
+  .sig th{text-align:left;font-size:11px;text-transform:none;color:var(--ink-soft);font-weight:700;padding:0 4px 6px}
+  .sig td{padding:8px 4px;border-top:1px solid var(--line);vertical-align:top}
+  .sig td:first-child{width:34%}
+  .sig .num{font-variant-numeric:tabular-nums;font-weight:700}
+  .sig .code{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:#F1EFEA;color:var(--ink-soft);margin-top:3px}
+  .verdict{margin-top:12px;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.45;background:#F1EFEA}
+  .verdict.comms{background:#EEF3FA}
+  .verdict.policy{background:var(--burgundy-soft)}
+  .foot{font-size:12px;color:var(--ink-soft);margin-top:8px;line-height:1.5}
+  .rule-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+  .rule-head h2{margin:0}
+  .version{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft)}
+  .seg{display:inline-flex;border:1px solid var(--ink);border-radius:var(--radius-pill);overflow:hidden}
+  .seg button{border:0;background:#fff;color:var(--ink);padding:6px 12px;font-size:13px;font-weight:700}
+  .seg button[aria-pressed="true"]{background:var(--plum);color:#fff}
+  .rules tr.restrict-row td{transition:background .4s}
+  .rules tr.restrict-row.flash td{background:var(--marigold-soft)}
+  .restrict-note{font-size:12px;color:var(--ink-soft);margin:4px 0 0;line-height:1.45}
+  @media (prefers-reduced-motion:reduce){.rules tr.restrict-row td{transition:none}}
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- Worker view -->
+  <section class="phone" aria-label="Worker view of the Reliability Score">
+    <div class="phone-top">
+      <div class="row"><div class="circle">&#8249;</div><div class="circle">i</div></div>
+      <p class="greeting" id="greeting">Every worker starts here. Your first shifts move you up.</p>
+      <p class="score" id="scoreNum">0</p>
+      <div class="tier" id="tierLabel">Full access<small>Book any horizon, instant book</small></div>
+    </div>
+    <div class="phone-body">
+      <div class="track-wrap">
+        <div class="track" id="track">
+          <div class="zero-line" aria-hidden="true"></div>
+          <div class="thumb" id="thumb" aria-hidden="true"></div>
+        </div>
+        <div class="ticks" id="ticks"></div>
+        <div class="bands">
+          <span class="b-restricted" style="left:12.5%">Restricted</span>
+          <span class="b-limited" style="left:34.7%">Limited</span>
+          <span class="b-full" style="left:69.4%">Full access</span>
+          <span class="b-trusted" style="left:96%">Trusted</span>
+        </div>
+      </div>
+
+      <div class="panel changed neutral" id="changedPanel">
+        <h3 id="changedTitle">What changed</h3>
+        <p id="changedLine">Nothing yet. Your score starts at 0.</p>
+        <p class="muted" id="changedSub"></p>
+      </div>
+
+      <div class="panel climb" id="climbPanel">
+        <h3>How to climb</h3>
+        <p id="climb1"></p>
+        <p id="climb2"></p>
+        <p class="muted">Each verified shift is +1, up to 3 a week.</p>
+        <p class="warn" id="climbWarn"></p>
+      </div>
+
+      <div class="panel deact" id="deactPanel" hidden>
+        <h3>Account deactivated</h3>
+        <p>3 no-call-no-shows inside 30 days. This is automatic and does not depend on the score.</p>
+      </div>
+
+
+      <div class="sheet" id="supportSheet" hidden>
+        <h4 id="sheetTitle">How is this working for you?</h4>
+        <p class="sub" id="sheetSub">Tell us where you are with your score. This is the same choice a support agent would tag.</p>
+        <div id="sheetOptions">
+          <button class="opt confused" data-fb="confused"><b>I do not understand my score</b><span>Why did it change, what does my tier mean</span></button>
+          <button class="opt unfair" data-fb="unfair"><b>I understand it, but it is unfair</b><span>The rule itself is the problem</span></button>
+          <button class="opt appeal" data-fb="appeal"><b>Appeal this penalty</b><span>Something about this specific shift was wrong</span></button>
+          <button class="opt fine" data-fb="fine"><b>This makes sense to me</b><span>Close without contacting support</span></button>
+        </div>
+        <div class="ack" id="sheetAck" hidden></div>
+        <div id="sheetRate" hidden>
+          <p class="sub" id="ratePrompt" style="margin-top:12px">How satisfied are you with how this was handled?</p>
+          <div class="stars" id="stars"></div>
+        </div>
+      </div>
+
+      <button class="pill dark" id="forgiveBtn">Use emergency forgiveness (1 left this quarter)</button>
+      <button class="pill">How is my score calculated?</button>
+    </div>
+  </section>
+
+  <!-- Presenter controls -->
+  <section class="presenter">
+    <h1>Reliability Score, live</h1>
+    <p class="lede">Drag the score, or fire the events a worker actually generates, and watch the tier, the message, and the next step update the way a worker would see them.</p>
+
+    <div class="card">
+      <h2>Move the score directly</h2>
+      <input class="slider" id="slider" type="range" min="-24" max="12" step="1" value="0" aria-label="Reliability score">
+      <div class="slider-scale"><span>-24</span><span>-15</span><span>-8</span><span>0</span><span>+10</span><span>+12</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Or fire an event</h2>
+      <div class="events">
+        <button class="ev plus" data-ev="shift"><b>+1</b><span>Completed verified shift</span></button>
+        <button class="ev zero" data-ev="c72"><b>0</b><span>Cancel, more than 72h out</span></button>
+        <button class="ev minus1" data-ev="c24"><b>-1</b><span>Cancel, 24 to 72h before</span></button>
+        <button class="ev minus3" data-ev="c4"><b>-3</b><span>Cancel, 4 to 24h before</span></button>
+        <button class="ev minus5" data-ev="c0"><b>-5</b><span>Cancel, under 4h before</span></button>
+        <button class="ev ncns" data-ev="ncns"><b>-8</b><span>No-call-no-show</span></button>
+      </div>
+      <div class="week">
+        <span id="weekInfo">This week: 0 of 3 shift credits used</span>
+        <button class="link" id="newWeek">Start a new week</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Jump to a worker</h2>
+      <div class="presets">
+        <button class="preset" data-preset="new">New worker (0)</button>
+        <button class="preset" data-preset="veteran">Reliable veteran (+12)</button>
+        <button class="preset" data-preset="oneslip">Veteran after one no-show (+4)</button>
+        <button class="preset" data-preset="newslip">New worker after one no-show (-8)</button>
+        <button class="preset" data-preset="offender">Repeat offender (-16)</button>
+        <button class="preset" data-preset="reset">Reset demo</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="rule-head">
+        <h2>The rule</h2>
+        <div class="version">Restricted tier
+          <div class="seg" role="group" aria-label="Restricted tier rule version">
+            <button type="button" data-ver="original" aria-pressed="false">Original</button>
+            <button type="button" data-ver="revised" aria-pressed="true">Revised</button>
+          </div>
+        </div>
+      </div>
+      <table class="rules">
+        <tr><td>Completed verified shift</td><td><b>+1</b>, up to 3 a week, credit capped at +12</td></tr>
+        <tr><td>Cancel more than 72h out</td><td><b>0</b>, early cancellation stays free</td></tr>
+        <tr><td>Cancel 24 to 72h before start</td><td><b>-1</b></td></tr>
+        <tr><td>Cancel 4 to 24h before start</td><td><b>-3</b></td></tr>
+        <tr><td>Cancel under 4h before start</td><td><b>-5</b></td></tr>
+        <tr><td>No-call-no-show</td><td><b>-8</b></td></tr>
+        <tr><td>Trusted</td><td>+10 and up: priority visibility, instant book on high-value shifts</td></tr>
+        <tr><td>Full access</td><td>-7 to +9: any horizon, instant book</td></tr>
+        <tr><td>Limited</td><td>-8 to -14: 7-day booking window, no instant book on high-demand shifts</td></tr>
+        <tr class="restrict-row"><td>Restricted</td><td><span id="restrictRule"></span><p class="restrict-note" id="restrictNote"></p></td></tr>
+        <tr><td>Deactivation</td><td>3 no-call-no-shows inside 30 days, automatic</td></tr>
+        <tr><td>Window</td><td>Last 8 active weeks. A break freezes the score, it does not reset it</td></tr>
+      </table>
+      <p class="foot">Weights mirror the refill curve from the Cleveland data: 4% refilled after a no-show, 19% inside 4h, 34% inside 24h, 63% inside 72h, 89% beyond.</p>
+    </div>
+
+
+    <div class="card">
+      <h2>Signals captured</h2>
+      <table class="sig">
+        <tr><th>Metric</th><th>What it separates</th><th>Count</th></tr>
+        <tr><td>Comprehension contacts<span class="code">tag: confused</span></td><td>Comms problem. Fix the explainer, not the policy</td><td class="num" id="sigConfused">0</td></tr>
+        <tr><td>Fairness contacts<span class="code">tag: disputes</span></td><td>Policy problem. The rule itself is being rejected</td><td class="num" id="sigUnfair">0</td></tr>
+        <tr><td>Appeals filed<span class="code">tag: appeal</span></td><td>Overturn rate above 30% means the scoring is wrong</td><td class="num" id="sigAppeal">0</td></tr>
+        <tr><td>In-app deflections<span class="code">no contact</span></td><td>The card resolved it. Target is 70% or better</td><td class="num" id="sigFine">0</td></tr>
+        <tr><td>CSAT on score contacts</td><td>Gap vs overall CSAT is the signal, not the level</td><td class="num" id="sigCsat">n/a</td></tr>
+      </table>
+      <div class="verdict" id="verdict">Fire some events, then open the i button on the phone to log worker feedback.</div>
+      <p class="foot">Two reason codes at tag time is the whole point: confused and disputes look identical in a ticket count and need opposite responses.</p>
+    </div>
+
+    <div class="card">
+      <h2>Activity</h2>
+      <ul class="log" id="log"><li><span>Score starts at 0</span><b>0</b></li></ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  const LO=-24, HI=12, CAP=12, WEEKLY_CAP=3;
+  let score=0, weekCredits=0, ncnsRecent=0, forgivenessLeft=1, lastPenalty=null, deactivated=false;
+
+  const $=id=>document.getElementById(id);
+  const scoreNum=$('scoreNum'), tierLabel=$('tierLabel'), greeting=$('greeting'), thumb=$('thumb');
+  const changedPanel=$('changedPanel'), changedTitle=$('changedTitle'), changedLine=$('changedLine'), changedSub=$('changedSub');
+  const climb1=$('climb1'), climb2=$('climb2'), climbWarn=$('climbWarn'), deactPanel=$('deactPanel');
+  const slider=$('slider'), log=$('log'), weekInfo=$('weekInfo'), forgiveBtn=$('forgiveBtn');
+
+  // ticks
+  [[-24,'-24'],[-15,'-15'],[-8,'-8'],[0,'0'],[10,'+10']].forEach(([v,t])=>{
+    const s=document.createElement('span'); s.textContent=t; s.style.left=pct(v)+'%'; $('ticks').appendChild(s);
+  });
+  function pct(v){ return (Math.max(LO,Math.min(HI,v))-LO)/(HI-LO)*100; }
+  function fmt(v){ return v>0?'+'+v:String(v); }
+
+  const RESTRICT={
+    original:{
+      rule:'-15 and below: only shifts starting within 72h, request basis',
+      note:'Version presented in round 2.',
+      phone:'Only shifts starting within 72h, on request',
+      greet:'You can still work. Book shifts starting in the next 72 hours.'
+    },
+    revised:{
+      rule:'-15 and below: shifts starting within 72h, up to 3 claims a week. Inside 24h, instant book once higher tiers have had first look. 24 to 72h on request',
+      note:'Revised after round 2: no approval step inside 24h, where refill is worst. Order replaces the gate.',
+      phone:'Near-term shifts, up to 3 a week. Under 24h books instantly',
+      greet:'You can still work. Book up to 3 near-term shifts a week.'
+    }
+  };
+  let restrictVer='revised';
+  function setRestrictVer(v,flash){
+    restrictVer=v;
+    $('restrictRule').textContent=RESTRICT[v].rule;
+    $('restrictNote').textContent=RESTRICT[v].note;
+    document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.ver===v)));
+    if(flash){
+      const row=document.querySelector('.restrict-row');
+      row.classList.add('flash'); setTimeout(()=>row.classList.remove('flash'),700);
+    }
+  }
+  document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{ setRestrictVer(b.dataset.ver,true); render(); }));
+  setRestrictVer('revised',false);
+
+  function tier(v){
+    if(v>=10) return {name:'Trusted',desc:'Priority visibility, instant book on high-value shifts',color:'#8A6A0A',bg:'var(--marigold-soft)'};
+    if(v>=-7) return {name:'Full access',desc:'Book any horizon, instant book',color:'var(--green)'};
+    if(v>=-15+1) return {name:'Limited',desc:'Book up to 7 days out, no instant book on high-demand shifts',color:'var(--amber)'};
+    return {name:'Restricted',desc:RESTRICT[restrictVer].phone,color:'#7A1F1F'};
+  }
+  function scoreColor(v){
+    if(v>=10) return '#8A6A0A';
+    if(v>=1) return 'var(--green)';
+    if(v===0) return 'var(--ink)';
+    if(v>=-7) return '#A6522F';
+    return 'var(--burgundy)';
+  }
+  function greet(v,t){
+    if(deactivated) return 'Your account is deactivated.';
+    if(t.name==='Trusted') return 'Shifts are offered to you first. Keep showing up.';
+    if(v>0) return 'Your reliability is building. Keep it up.';
+    if(v===0) return 'Every worker starts here. Your first shifts move you up.';
+    if(t.name==='Full access') return 'You still have full access. One more late cancel changes that.';
+    if(t.name==='Limited') return 'Your booking window is shorter for now. Worked shifts bring it back.';
+    return RESTRICT[restrictVer].greet;
+  }
+  function climb(v){
+    const t=tier(v);
+    if(deactivated){climb1.textContent='';climb2.textContent='';climbWarn.textContent='';return;}
+    let a='', b='';
+    if(t.name==='Restricted'){ a=`${-14-v} verified shifts to reach Limited (-14)`; b=`${-7-v} verified shifts to reach Full access (-7)`; }
+    else if(t.name==='Limited'){ a=`${-7-v} verified shifts to reach Full access (-7)`; b=`${10-v} verified shifts to reach Trusted (+10)`; }
+    else if(t.name==='Full access'){ a= v<0 ? `${-v} verified shifts to get back to 0` : `${10-v} verified shifts to reach Trusted (+10)`; b= v<0 ? `${10-v} verified shifts to reach Trusted (+10)` : `Credit caps at +12`; }
+    else { a= v<CAP ? `${CAP-v} more to reach the +12 cap` : 'You are at the +12 cap'; b='A no-show costs 8 and drops you to Full access'; }
+    climb1.textContent=a; climb2.textContent=b;
+    // warning about next event
+    let w='';
+    if(t.name==='Full access'){
+      const toLimited=v-(-8);
+      if(toLimited<=8) w = toLimited<=1 ? 'One more cancel of any kind inside 72h moves you to Limited' :
+                        toLimited<=3 ? 'One more cancel inside 24h moves you to Limited' :
+                        toLimited<=5 ? 'One more cancel inside 4h moves you to Limited' :
+                        'One no-call-no-show moves you to Limited';
+    } else if(t.name==='Limited'){
+      const toR=v-(-15);
+      w = toR<=1 ? 'One more cancel of any kind inside 72h moves you to Restricted' :
+          toR<=3 ? 'One more cancel inside 24h moves you to Restricted' :
+          toR<=5 ? 'One more cancel inside 4h moves you to Restricted' : 'One no-call-no-show moves you to Restricted';
+    }
+    climbWarn.textContent=w;
+  }
+  function render(){
+    const t=tier(score);
+    scoreNum.textContent=fmt(score);
+    scoreNum.style.color=scoreColor(score);
+    tierLabel.innerHTML=`${t.name}<small>${t.desc}</small>`;
+    tierLabel.style.color=t.color;
+    greeting.textContent=greet(score,t);
+    document.querySelector('.phone-top').style.background = deactivated ? '#E9D3D7' :
+      t.name==='Trusted' ? 'var(--marigold-soft)' : t.name==='Full access' ? 'var(--mint)' :
+      t.name==='Limited' ? 'var(--amber-soft)' : 'var(--burgundy-soft)';
+    thumb.style.left=pct(score)+'%';
+    slider.value=Math.max(LO,Math.min(HI,score));
+    climb(score);
+    weekInfo.textContent=`This week: ${weekCredits} of ${WEEKLY_CAP} shift credits used`;
+    document.querySelector('[data-ev="shift"]').disabled = weekCredits>=WEEKLY_CAP || score>=CAP || deactivated;
+    forgiveBtn.textContent = forgivenessLeft ? 'Use emergency forgiveness (1 left this quarter)' : 'Emergency forgiveness used this quarter';
+    forgiveBtn.disabled = !forgivenessLeft || !lastPenalty || lastPenalty.kind==='ncns' || deactivated;
+    deactPanel.hidden=!deactivated;
+    $('climbPanel').hidden=deactivated;
+  }
+  function setChanged(cls,title,line,sub){
+    changedPanel.className='panel changed '+cls; changedTitle.textContent=title; changedLine.textContent=line; changedSub.textContent=sub||'';
+  }
+  function addLog(text,delta){
+    const li=document.createElement('li'); li.innerHTML=`<span>${text}</span><b>${delta}</b>`; log.prepend(li);
+  }
+  const events={
+    shift:{delta:+1,label:'Completed verified shift',kind:'shift'},
+    c72:{delta:0,label:'Cancelled more than 72h out',kind:'cancel'},
+    c24:{delta:-1,label:'Cancelled 24 to 72h before start',kind:'cancel'},
+    c4:{delta:-3,label:'Cancelled 4 to 24h before start',kind:'cancel'},
+    c0:{delta:-5,label:'Cancelled under 4h before start',kind:'cancel'},
+    ncns:{delta:-8,label:'No-call-no-show',kind:'ncns'}
+  };
+  function fire(key){
+    if(deactivated) return;
+    const e=events[key]; const before=score;
+    if(e.kind==='shift'){
+      if(weekCredits>=WEEKLY_CAP || score>=CAP) return;
+      weekCredits++; score=Math.min(CAP,score+1);
+      setChanged('up','What changed',`+1  ${e.label}`,`Score before: ${fmt(before)}`);
+      lastPenalty=null;
+    } else {
+      score+=e.delta;
+      if(e.kind==='ncns'){ ncnsRecent++; }
+      lastPenalty={key,delta:e.delta,kind:e.kind};
+      const cls = e.delta===0 ? 'neutral' : '';
+      setChanged(cls,'What changed',`${e.delta===0?'0':e.delta}  ${e.label}`, e.delta===0 ? 'Early cancellation is free. The shift refilled.' : `Score before: ${fmt(before)}`);
+      if(ncnsRecent>=3){ deactivated=true; }
+    }
+    const t1=tier(before).name, t2=tier(score).name;
+    addLog(e.label + (t1!==t2?` (${t1} to ${t2})`:''), e.delta>0?'+'+e.delta:String(e.delta));
+    render();
+  }
+  document.querySelectorAll('.ev').forEach(b=>b.addEventListener('click',()=>fire(b.dataset.ev)));
+  $('newWeek').addEventListener('click',()=>{ weekCredits=0; addLog('New week started',''); render(); });
+  forgiveBtn.addEventListener('click',()=>{
+    if(!forgivenessLeft || !lastPenalty || lastPenalty.kind==='ncns') return;
+    const before=score; score-=lastPenalty.delta; forgivenessLeft=0;
+    setChanged('up','Forgiveness applied',`${-lastPenalty.delta>0?'+':''}${-lastPenalty.delta}  Emergency forgiveness on your last cancellation`,`Score before: ${fmt(before)}. Forgiveness never applies to a no-call-no-show.`);
+    addLog('Emergency forgiveness used', '+'+(-lastPenalty.delta)); lastPenalty=null; render();
+  });
+  slider.addEventListener('input',()=>{
+    score=parseInt(slider.value,10); lastPenalty=null;
+    setChanged('neutral','What changed',`Score set to ${fmt(score)} by the presenter`,'');
+    render();
+  });
+  const presets={
+    new:{score:0,note:'New worker. No history yet.'},
+    veteran:{score:12,note:'Reliable veteran at the +12 cap. Twelve weeks of showing up.'},
+    oneslip:{score:4,note:'Veteran who no-showed once: +12 to +4. Loses Trusted, keeps full access. A second lands at -4, a third deactivates.'},
+    newslip:{score:-8,note:'New worker who no-showed once: 0 to -8. Limited, 7-day window.'},
+    offender:{score:-16,note:'Repeat offender: two no-shows, no work since. Restricted to near-term shifts.'},
+    reset:{score:0,note:'Demo reset.'}
+  };
+  document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>{
+    const p=presets[b.dataset.preset];
+    score=p.score; weekCredits=0; ncnsRecent=0; deactivated=false; lastPenalty=null; forgivenessLeft=1;
+    if(b.dataset.preset==='reset'){ log.innerHTML='<li><span>Score starts at 0</span><b>0</b></li>'; }
+    else { addLog(p.note,fmt(score)); }
+    setChanged(score<0?'':'neutral','Where this worker stands',p.note,'');
+    render();
+  }));
+
+  // ---- support sheet and signal capture ----
+  const sheet=$('supportSheet'), sheetAck=$('sheetAck'), sheetOptions=$('sheetOptions'),
+        sheetRate=$('sheetRate'), starsEl=$('stars'), verdict=$('verdict');
+  const sig={confused:0,unfair:0,appeal:0,fine:0,csat:[]};
+  const infoBtn=document.querySelectorAll('.phone-top .circle')[1];
+  infoBtn.setAttribute('role','button'); infoBtn.setAttribute('tabindex','0');
+  infoBtn.setAttribute('aria-label','Open support and feedback');
+  infoBtn.style.cursor='pointer';
+  function openSheet(){
+    sheet.hidden=false; sheetOptions.hidden=false; sheetRate.hidden=true; sheetAck.hidden=true;
+    sheet.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  function toggleSheet(){
+    if(sheet.hidden){ openSheet(); return; }
+    if(!sheetAck.hidden || !sheetRate.hidden){ openSheet(); return; }
+    sheet.hidden=true;
+  }
+  infoBtn.addEventListener('click',toggleSheet);
+  infoBtn.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault(); toggleSheet();} });
+
+  const ack={
+    confused:{title:'Tagged as a comprehension contact',body:'An agent would answer with one sentence: worked shifts move you up, late cancels move you down, your booking window follows your tier. If this tag dominates, the explainer failed, not the policy.'},
+    unfair:{title:'Tagged as a fairness contact',body:'This worker understands the rule and rejects it. This is the tag that can stop a rollout, because no amount of comms fixes it.'},
+    appeal:{title:'Appeal filed',body:'Reviewed within 48 hours. The metric that matters is the overturn rate: above 30% means the score is judging wrongly, not that workers are complaining.'},
+    fine:{title:'Resolved in app, no contact',body:'This is the deflection the score card is supposed to produce. Below 70% deflection means the card needs work before the rollout expands.'}
+  };
+  sheetOptions.addEventListener('click',e=>{
+    const b=e.target.closest('[data-fb]'); if(!b) return;
+    const k=b.dataset.fb; sig[k]++;
+    sheetOptions.hidden=true;
+    sheetAck.hidden=false; sheetAck.className='ack a-'+k; sheetAck.innerHTML=`<b>${ack[k].title}</b>${ack[k].body}`;
+    if(k!=='fine'){ sheetRate.hidden=false; $('ratePrompt').textContent='How satisfied are you with how this was handled?'; }
+    addLog('Feedback: '+b.querySelector('b').textContent,'');
+    renderSignals();
+  });
+  [1,2,3,4,5].forEach(n=>{
+    const b=document.createElement('button'); b.className='star'; b.textContent=n;
+    b.setAttribute('aria-label',n+' out of 5');
+    b.addEventListener('click',()=>{ sig.csat.push(n); sheetRate.hidden=true; addLog('CSAT rating: '+n+' of 5',''); renderSignals(); });
+    starsEl.appendChild(b);
+  });
+  function renderSignals(){
+    $('sigConfused').textContent=sig.confused;
+    $('sigUnfair').textContent=sig.unfair;
+    $('sigAppeal').textContent=sig.appeal;
+    $('sigFine').textContent=sig.fine;
+    const c=sig.csat;
+    $('sigCsat').textContent = c.length ? (c.reduce((a,b)=>a+b,0)/c.length).toFixed(1)+' of 5' : 'n/a';
+    const contacts=sig.confused+sig.unfair+sig.appeal, total=contacts+sig.fine;
+    let cls='', txt='';
+    if(total===0){ txt='Fire some events, then open the i button on the phone to log worker feedback.'; }
+    else{
+      const defl=Math.round(sig.fine/total*100);
+      const commsShare=contacts? Math.round(sig.confused/contacts*100) : 0;
+      if(contacts===0){ cls='comms'; txt=`${defl}% deflected in app, no contacts yet. This is what a working explainer looks like.`; }
+      else if(sig.unfair>0 && sig.unfair>=sig.confused){ cls='policy'; txt=`Fairness contacts are at least matching comprehension contacts. That is a policy signal, not a comms signal: pause the rollout and look at the thresholds, because a better explainer will not move this number.`; }
+      else { cls='comms'; txt=`Comprehension is ${commsShare}% of contacts and deflection is ${defl}%. That reads as a comms problem: fix the explainer and the card, leave the policy alone.`; }
+    }
+    verdict.className='verdict '+cls; verdict.textContent=txt;
+  }
+  renderSignals();
+
+  render();
+})();
+</script>
+</body>
+</html>
